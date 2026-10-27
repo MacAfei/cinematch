@@ -1,0 +1,23 @@
+# Virtual Environment
+.venv/
+venv/
+ENV/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+
+# Data and Artifacts (per project requirements)
+data/
+artifacts/
+
+# System / OS
+.DS_Store
+Thumbs.db
+
+# Database and Local Secrets
+db/
+.streamlit/secrets.toml

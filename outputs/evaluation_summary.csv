@@ -1,0 +1,5 @@
+Model,Precision@10,Precision_Std,Precision_CI95,Recall@10,Recall_Std,Recall_CI95,Normalized_Recall@10,Normalized_Recall_Std,Normalized_Recall_CI95,Test_Users_Count
+Popularity Baseline,0.0220,0.0502,0.0057,0.0171,0.0574,0.0065,0.0273,0.0686,0.0078,300
+Content-Based,0.0053,0.0239,0.0027,0.0052,0.0370,0.0042,0.0078,0.0416,0.0047,300
+Collaborative,0.1530,0.1645,0.0186,0.1309,0.1659,0.0188,0.1991,0.2025,0.0229,300
+Hybrid (w=0.5),0.1483,0.1631,0.0185,0.1317,0.1674,0.0189,0.1961,0.2029,0.0230,300
