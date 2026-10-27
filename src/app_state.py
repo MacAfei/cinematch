@@ -42,18 +42,25 @@ def get_app_engine():
     """
     movies_df, ratings_df, links_df, tags_df = get_cached_raw_data()
 
-    # Precomputed movie statistics
-    stats_cache_path = ARTIFACTS_DIR / "movie_stats.parquet"
+    # Ensure working directories exist at startup
+    from src.config import DATA_DIR, ARTIFACTS_DIR, OUTPUTS_DIR, BASE_DIR
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    ARTIFACTS_DIR.mkdir(parents=True, exist_ok=True)
+    OUTPUTS_DIR.mkdir(parents=True, exist_ok=True)
+    (BASE_DIR / "db").mkdir(parents=True, exist_ok=True)
+
+    # Precomputed movie statistics (stored as CSV for zero extra dependencies)
+    stats_cache_path = ARTIFACTS_DIR / "movie_stats.csv"
     if stats_cache_path.exists():
         try:
-            movie_stats = pd.read_parquet(stats_cache_path)
+            movie_stats = pd.read_csv(stats_cache_path)
         except Exception:
             movie_stats = compute_movie_statistics(movies_df, ratings_df)
-            movie_stats.to_parquet(stats_cache_path)
+            movie_stats.to_csv(stats_cache_path, index=False)
     else:
         movie_stats = compute_movie_statistics(movies_df, ratings_df)
         try:
-            movie_stats.to_parquet(stats_cache_path)
+            movie_stats.to_csv(stats_cache_path, index=False)
         except Exception:
             pass
 

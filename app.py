@@ -74,6 +74,7 @@ if "show_profile_picker" not in st.session_state:
 if active_profile is None or st.session_state.show_profile_picker:
     st.markdown("<h1 style='text-align:center; color:#E36F61; margin-top:20px;'>Who is watching?</h1>", unsafe_allow_html=True)
     st.markdown("<p style='text-align:center; color:#A896A6;'>Select a profile or create a personalized taste identity</p>", unsafe_allow_html=True)
+    st.info("💡 **Hosted Demo Notice**: Streamlit Community Cloud runs in a temporary container. Custom guest profiles, watchlists, and live ratings are persisted during your session, but may reset if the cloud server restarts.")
 
     profiles = list_profiles()
     cols = st.columns(min(len(profiles) + 1, 5))

@@ -1,5 +1,6 @@
 # Virtual Environment
 .venv/
+.venv*/
 venv/
 ENV/
 
@@ -10,14 +11,16 @@ __pycache__/
 *.so
 .pytest_cache/
 
-# Data and Artifacts (per project requirements)
-data/
-artifacts/
+# Data (commit small benchmark dataset, ignore large dumps)
+data/*
+!data/ml-latest-small/
+!data/ml-latest-small/*.csv
+!data/ml-latest-small/*.txt
+
+# Database and Local Secrets
+db/*.db
+.streamlit/secrets.toml
 
 # System / OS
 .DS_Store
 Thumbs.db
-
-# Database and Local Secrets
-db/
-.streamlit/secrets.toml

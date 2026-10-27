@@ -117,7 +117,7 @@ class CollaborativeRecommender:
         self.S_norm_csc = (S_csc @ inv_norms).tocsc()
         self.B_csc = self.B.tocsc()
 
-    def get_item_similarity_vector(self, movie_id: int) -> np.ndarray:
+    def get_item_similarity_vector(self, movie_id: int, top_k_neighbors: Optional[int] = 50) -> np.ndarray:
         """
         Computes the collaborative similarity vector for a given movie_id
         against all movies in the catalog.
@@ -127,6 +127,7 @@ class CollaborativeRecommender:
         - Shrinkage regularization: sim * (co_raters / (co_raters + shrinkage))
         - Non-negative clipping
         - Zeroes out self-similarity
+        - Limits neighbours kept per item to top_k_neighbors (default 50) for memory efficiency
         Returns:
             np.ndarray of shape (n_items,) with similarity scores in [0, 1].
         """
@@ -164,6 +165,15 @@ class CollaborativeRecommender:
 
         # Zero out self-similarity
         sim_scores[target_idx] = 0.0
+
+        # Memory optimization: keep top-K neighbours
+        if top_k_neighbors is not None and top_k_neighbors > 0:
+            nonzero_count = np.count_nonzero(sim_scores)
+            if nonzero_count > top_k_neighbors:
+                top_indices = np.argpartition(sim_scores, -top_k_neighbors)[-top_k_neighbors:]
+                filtered_scores = np.zeros_like(sim_scores)
+                filtered_scores[top_indices] = sim_scores[top_indices]
+                sim_scores = filtered_scores
 
         return sim_scores.astype(np.float32)
 

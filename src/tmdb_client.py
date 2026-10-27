@@ -25,28 +25,36 @@ _CACHE_DIRTY = False
 
 
 def get_tmdb_api_key() -> str:
-    """Retrieves TMDB_API_KEY from environment or .streamlit/secrets.toml if available."""
-    key = os.environ.get("TMDB_API_KEY", "")
-    if key:
-        return key.strip()
-
-    # Try Streamlit secrets if running inside streamlit
+    """Retrieves TMDB_API_KEY from st.secrets first, then environment or .streamlit/secrets.toml."""
+    # 1. Try Streamlit secrets first (safely wrapped in try/except)
     try:
         import streamlit as st
         if hasattr(st, "secrets") and "TMDB_API_KEY" in st.secrets:
-            return str(st.secrets["TMDB_API_KEY"]).strip()
+            key = str(st.secrets["TMDB_API_KEY"]).strip()
+            if key:
+                return key
     except Exception:
         pass
 
-    # Try local secrets.toml file directly
-    secrets_path = Path(__file__).resolve().parent.parent / ".streamlit" / "secrets.toml"
-    if secrets_path.exists():
-        try:
+    # 2. Try environment variable
+    try:
+        env_key = os.environ.get("TMDB_API_KEY", "").strip()
+        if env_key:
+            return env_key
+    except Exception:
+        pass
+
+    # 3. Try local secrets.toml file directly
+    try:
+        secrets_path = Path(__file__).resolve().parent.parent / ".streamlit" / "secrets.toml"
+        if secrets_path.exists():
             import toml
             data = toml.load(secrets_path)
-            return str(data.get("TMDB_API_KEY", "")).strip()
-        except Exception:
-            pass
+            file_key = str(data.get("TMDB_API_KEY", "")).strip()
+            if file_key:
+                return file_key
+    except Exception:
+        pass
 
     return ""
 

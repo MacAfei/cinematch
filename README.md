@@ -205,14 +205,33 @@ The technologies used in this project are strictly rendered from `src/team_confi
 
 ## ☁️ Deployment to Streamlit Community Cloud
 
-1. Push this repository to GitHub.
-2. Visit [share.streamlit.io](https://share.streamlit.io/) and create a new app.
-3. Select your repository, branch (`main`), and set the main file path to `app.py`.
-4. Under **Advanced Settings > Secrets**, paste your TMDb key:
+Follow these steps to deploy CineMatch live on [share.streamlit.io](https://share.streamlit.io):
+
+1. **Push Changes to GitHub**:
+   Ensure all changes are pushed to your repository `MacAfei/cinematch` on branch `main`.
+
+2. **Create New App on Streamlit Cloud**:
+   - Go to [share.streamlit.io](https://share.streamlit.io) and click **"Create app"** (or **"New app"**).
+   - Choose:
+     - **Repository**: `MacAfei/cinematch`
+     - **Branch**: `main`
+     - **Main file path**: `app.py`
+     - **App URL**: `cinematch.streamlit.app` (or your chosen subdomain)
+
+3. **Select Python 3.12 in Advanced Settings**:
+   > ⚠️ **CRITICAL: Select Python 3.12**  
+   > Click **Advanced settings** before deploying and select **Python 3.12** from the Python version dropdown.  
+   > *(Note: Streamlit Community Cloud does not allow changing the Python version of an existing app after deployment; if an older version was selected, you must delete and recreate the app).*
+
+4. **Configure Secrets (TMDb Posters)**:
+   In the **Secrets** box under Advanced settings, enter:
    ```toml
-   TMDB_API_KEY = "your_actual_tmdb_key"
+   TMDB_API_KEY = "your_actual_tmdb_key_here"
    ```
-5. Click **Deploy**. CineMatch will automatically initialize the SQLite database, download the dataset, and launch seamlessly.
+   *(If you don't have a key yet, leave it empty or configure it later under App Settings ➔ Secrets; the app will run with attractive built-in SVG gradient posters).*
+
+5. **Deploy**:
+   Click **"Deploy!"**. CineMatch will install dependencies from `requirements.txt`, load the committed `ml-latest-small` dataset, initialize the local SQLite database, and launch your live streaming app!
 
 ---
 
