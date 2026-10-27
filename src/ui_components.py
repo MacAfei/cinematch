@@ -312,28 +312,83 @@ def render_tmdb_banner_if_missing():
             )
 
 
-def render_top_navbar(profile_name: str = "Guest", avatar: str = "🍿"):
-    """Renders the top branding and active profile pill."""
+def render_top_navbar(
+    profile_name: str = "Guest",
+    avatar: str = "🍿",
+    show_search: bool = True,
+    movies_df: Optional[pd.DataFrame] = None,
+    links_df: Optional[pd.DataFrame] = None
+):
+    """Renders the top branding, compact global search bar, and active profile pill."""
     api_key = get_tmdb_api_key()
-    tmdb_badge = "🟢 Posters Active" if api_key else "⚪ Stylized Mode"
+    tmdb_badge = "🟢 HD Posters" if api_key else "⚪ Stylized Mode"
 
-    html = f"""
-    <div class="cinematch-navbar">
-        <div class="cinematch-logo">
-            🎬 CineMatch
-        </div>
-        <div style="display:flex; align-items:center; gap:12px;">
-            <span style="font-size:0.75rem; color:#A896A6; background:#1C1424; padding:4px 8px; border-radius:12px; border:1px solid #30203D;">
-                {tmdb_badge}
-            </span>
-            <div class="profile-pill">
-                <span>{avatar}</span>
-                <strong>{profile_name}</strong>
+    nav_c1, nav_c2, nav_c3 = st.columns([2.6, 4.4, 3.0], vertical_alignment="center")
+
+    with nav_c1:
+        st.markdown(
+            """
+            <div class="cinematch-logo">
+                🎬 CineMatch
             </div>
-        </div>
-    </div>
-    """
-    st.markdown(html, unsafe_allow_html=True)
+            """,
+            unsafe_allow_html=True
+        )
+
+    with nav_c2:
+        if show_search:
+            global_q = st.text_input(
+                "Search movies",
+                placeholder="🔍 Search movies, e.g. 'matrix'...",
+                label_visibility="collapsed",
+                key="global_nav_search_input"
+            )
+            if global_q and global_q.strip():
+                # Detect query change / submission
+                if st.session_state.get("prev_global_search_q") != global_q.strip():
+                    st.session_state["prev_global_search_q"] = global_q.strip()
+                    st.session_state["search_query_val"] = global_q.strip()
+                    st.session_state["search_trigger"] = True
+                    try:
+                        st.switch_page("pages/01_Search.py")
+                    except Exception:
+                        pass
+
+                # Live suggestions if movies_df is provided
+                if movies_df is not None and not movies_df.empty:
+                    suggs = fuzzy_search_movie(global_q.strip(), movies_df, limit=5, score_cutoff=45)
+                    if not suggs.empty:
+                        with st.expander(f"✨ Suggestions for '{global_q.strip()}' (Click to open)", expanded=True):
+                            s_cols = st.columns(len(suggs))
+                            for idx, (_, s_row) in enumerate(suggs.iterrows()):
+                                with s_cols[idx]:
+                                    p_url = get_movie_poster_url(s_row, links_df)
+                                    st.image(p_url, use_container_width=True)
+                                    title_short = s_row.get("clean_title", s_row["title"])[:16]
+                                    st.caption(f"**{title_short}**")
+                                    if st.button("Open", key=f"nav_open_{s_row['movieId']}", use_container_width=True):
+                                        st.session_state["search_query_val"] = s_row.get("clean_title", s_row["title"])
+                                        try:
+                                            st.switch_page("pages/01_Search.py")
+                                        except Exception:
+                                            pass
+
+    with nav_c3:
+        st.markdown(
+            f"""
+            <div style="display:flex; align-items:center; justify-content:flex-end; gap:8px;">
+                <span style="font-size:0.75rem; color:#A896A6; background:#1C1424; padding:4px 8px; border-radius:12px; border:1px solid #30203D;">
+                    {tmdb_badge}
+                </span>
+                <div class="profile-pill">
+                    <span>{avatar}</span>
+                    <strong>{profile_name}</strong>
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+    st.markdown("<div style='border-bottom:1px solid #23182C; margin-bottom:16px;'></div>", unsafe_allow_html=True)
 
 
 def get_movie_poster_url(movie_row: Dict[str, Any], links_df: Optional[pd.DataFrame] = None) -> str:
@@ -498,17 +553,19 @@ def show_movie_detail_dialog(movie_id: int, profile_id: int, engine: Dict[str, A
 def fuzzy_search_movie(
     query: str,
     movies_df: pd.DataFrame,
-    limit: int = 12,
-    score_cutoff: int = 45
+    limit: int = 100,
+    score_cutoff: int = 40
 ) -> pd.DataFrame:
-    """Fuzzy title search using RapidFuzz."""
-    if not query or not query.strip():
-        return movies_df.head(limit)
+    """Fuzzy title search using RapidFuzz matching across titles."""
+    if not query or not str(query).strip():
+        res = movies_df.head(limit).copy()
+        res["match_score"] = 0.0
+        return res
 
-    query = query.strip()
-    title_list = movies_df["title"].tolist()
+    clean_q = str(query).strip()
+    title_list = movies_df["clean_title"].tolist() if "clean_title" in movies_df.columns else movies_df["title"].tolist()
     matches = process.extract(
-        query,
+        clean_q,
         title_list,
         scorer=fuzz.WRatio,
         limit=limit,
@@ -516,7 +573,100 @@ def fuzzy_search_movie(
     )
 
     if not matches:
-        return pd.DataFrame()
+        return pd.DataFrame(columns=movies_df.columns.tolist() + ["match_score"])
 
     matched_indices = [match[2] for match in matches]
-    return movies_df.iloc[matched_indices].copy()
+    scores = [match[1] for match in matches]
+    res = movies_df.iloc[matched_indices].copy()
+    res["match_score"] = scores
+    return res
+
+
+def filter_and_sort_movies(
+    movies_df: pd.DataFrame,
+    query: str = "",
+    selected_genres: Optional[List[str]] = None,
+    genre_match_mode: str = "Match ANY",
+    year_range: Optional[Tuple[int, int]] = None,
+    min_rating: float = 0.0,
+    sort_by: str = "Best match",
+    limit: Optional[int] = None,
+    score_cutoff: int = 40
+) -> pd.DataFrame:
+    """
+    Applies title fuzzy search, multi-genre filtering (ANY or ALL), release year bounds,
+    minimum rating cutoff, and sorting orders.
+    """
+    if movies_df.empty:
+        return pd.DataFrame()
+
+    # 1. Title Search via RapidFuzz
+    clean_q = str(query).strip() if query else ""
+    if clean_q:
+        candidates = fuzzy_search_movie(clean_q, movies_df, limit=limit or 500, score_cutoff=score_cutoff)
+    else:
+        candidates = movies_df.copy()
+        candidates["match_score"] = 0.0
+
+    if candidates.empty:
+        return candidates
+
+    # 2. Genre Filtering (ANY vs ALL)
+    if selected_genres:
+        if genre_match_mode == "Match ALL":
+            candidates = candidates[candidates["genre_list"].apply(
+                lambda glist: all(g in glist for g in selected_genres) if glist else False
+            )]
+        else:
+            candidates = candidates[candidates["genre_list"].apply(
+                lambda glist: any(g in glist for g in selected_genres) if glist else False
+            )]
+
+    if candidates.empty:
+        return candidates
+
+    # 3. Year Range Filtering
+    if year_range is not None:
+        min_y, max_y = year_range
+        candidates = candidates[
+            candidates["year"].apply(lambda y: pd.isna(y) or (min_y <= y <= max_y))
+        ]
+
+    if candidates.empty:
+        return candidates
+
+    # 4. Minimum Rating Filtering
+    if min_rating > 0.0 and "avg_rating" in candidates.columns:
+        candidates = candidates[candidates["avg_rating"].fillna(0.0) >= min_rating]
+
+    if candidates.empty:
+        return candidates
+
+    # 5. Sorting
+    # Options: Best match, Highest rated, Most rated, Newest, Oldest
+    if sort_by == "Highest rated":
+        sort_cols = ["avg_rating", "bayesian_rating", "n_ratings"]
+        asc = [False, False, False]
+    elif sort_by == "Most rated":
+        sort_cols = ["n_ratings", "bayesian_rating", "avg_rating"]
+        asc = [False, False, False]
+    elif sort_by == "Newest":
+        sort_cols = ["year", "bayesian_rating"]
+        asc = [False, False]
+    elif sort_by == "Oldest":
+        sort_cols = ["year", "bayesian_rating"]
+        asc = [True, False]
+    else:  # "Best match"
+        if clean_q and "match_score" in candidates.columns:
+            sort_cols = ["match_score", "bayesian_rating", "n_ratings"]
+            asc = [False, False, False]
+        else:
+            sort_cols = ["bayesian_rating", "n_ratings"]
+            asc = [False, False]
+
+    avail_sort_cols = [c for c in sort_cols if c in candidates.columns]
+    avail_asc = asc[:len(avail_sort_cols)]
+    if avail_sort_cols:
+        candidates = candidates.sort_values(by=avail_sort_cols, ascending=avail_asc, na_position="last")
+
+    return candidates.reset_index(drop=True)

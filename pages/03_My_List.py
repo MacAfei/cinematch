@@ -48,7 +48,12 @@ profile = get_profile(st.session_state.active_profile_id) if st.session_state.ac
 profile_name = profile["name"] if profile else "Guest"
 profile_avatar = profile["avatar"] if profile else "🍿"
 
-render_top_navbar(profile_name=profile_name, avatar=profile_avatar)
+render_top_navbar(
+    profile_name=profile_name,
+    avatar=profile_avatar,
+    movies_df=movies_df,
+    links_df=links_df
+)
 
 st.title("📌 My List")
 st.markdown("Your saved movies queue. Movies added to My List are excluded from general recommendations so you only discover new titles.")

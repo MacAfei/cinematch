@@ -64,7 +64,7 @@ collab_rec = engine["collab_recommender"]
 hybrid_rec = engine["hybrid_recommender"]
 cluster_model = engine["cluster_model"]
 
-render_top_navbar()
+render_top_navbar(movies_df=movies_df, links_df=links_df)
 
 st.title("📑 Big Data Analytics Lab: Project Overview")
 st.markdown(

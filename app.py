@@ -179,7 +179,12 @@ if not active_profile.get("onboarded", 0):
 # Top Navigation Bar & TMDb Banner
 top_c1, top_c2 = st.columns([5, 1])
 with top_c1:
-    render_top_navbar(profile_name=active_profile["name"], avatar=active_profile["avatar"])
+    render_top_navbar(
+        profile_name=active_profile["name"],
+        avatar=active_profile["avatar"],
+        movies_df=movies_df,
+        links_df=links_df
+    )
 with top_c2:
     if st.button("🔄 Switch Profile", use_container_width=True):
         st.session_state.show_profile_picker = True
